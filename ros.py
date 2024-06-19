@@ -28,34 +28,35 @@ class XController(Node):
         error = [0, 0]
         cur_pos = [self.current_pose.x, self.current_pose.y]
         trgt_pos = [target_x, target_y]
-        """
-        From your previous code example it was found that the cp can be auto fetched
-        and needs no mannual specifiaction
-        If this approach does not work go back to declaring it like this
-        
-        def move_to_point(self, target_x, target_y, current_x, current_y):
-            cp =[current_x, current_y]
-            
-        Callback example :- self.move_to_point(9.544445, 9.544445, 5.544445, 5.544445)
-        """
+
+        # From your previous code example it was found that the cp can be auto
+        # fetched and needs no mannual specifiaction.
+        # If this approach does not work go back to declaring it like this
+        # def move_to_point(self, target_x, target_y, current_x, current_y):
+        #    cur_pos = [current_x, current_y]
+        # Example: self.move_to_point(9.544445, 9.544445, 5.544445, 5.544445)
+        TIME_SLEEP = 0.5
         while True:
             # Sync values
             rclpy.spin_once(self)
 
             for i in range(2):
                 error[i] = trgt_pos[i] - cur_pos[i]
-            distance = math.sqrt(error[0] ** 2 + error[1] ** 2)
-            linear_vel = self.Kp * distance
-            twist_msg.linear.x = linear_vel * self.linear_speed
+            control_input = math.sqrt(error[0] ** 2 + error[1] ** 2)
+            control_output = self.Kp * control_input
+            twist_msg.linear.x = (
+                control_output * self.linear_speed / TIME_SLEEP
+            )  # only move in its own plane
             self.publisher_.publish(twist_msg)
-            time.sleep(1.0)
+            time.sleep(TIME_SLEEP)
+            # rclpy.spin_once(self)
             cur_pos = [self.current_pose.x, self.current_pose.y]
-            """ Another way of doing above line
-            
-            for i in range(2):
-                cp[i] = cp[i] + error[i]
-            """
-            if linear_vel < self.distance_threshold:
+
+            # Another way of doing above line
+            # for i in range(2):
+            #    cp[i] = cp[i] + error[i]
+
+            if control_output < self.distance_threshold:
                 break
         twist_msg.linear.x = 0.0
         self.publisher_.publish(twist_msg)
@@ -80,7 +81,7 @@ class XController(Node):
         self.rotate(math.radians(180), 1.0)
         self.move_to_point(5.544445, 5.544445)  # Move to point 3
 
-        self.rotate(math.radians(90), 1.0)  # Rotate 90 degrees
+        self.rotate(math.radians(90), 1.0)
         self.move_to_point(2.544445, 9.544445)  # Move to point 4
 
         self.rotate(math.radians(180), 1.0)
